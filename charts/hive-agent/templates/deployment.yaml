@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hive-agent.fullname" . }}
+  labels: {{- include "hive-agent.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "hive-agent.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "hive-agent.labels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: {{ include "hive-agent.fullname" . }}
+      containers:
+      - name: hive-agent
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        envFrom:
+        - configMapRef: { name: {{ include "hive-agent.fullname" . }} }
+        - secretRef: { name: {{ include "hive-agent.fullname" . }} }
+        ports:
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command: ["/usr/local/bin/hive-agent", "readyz"]
+        livenessProbe:
+          exec:
+            command: ["/usr/local/bin/hive-agent", "healthz"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources: {{- toYaml .Values.resources | nindent 10 }}
+      nodeSelector: {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations: {{- toYaml .Values.tolerations | nindent 8 }}
+      affinity: {{- toYaml .Values.affinity | nindent 8 }}
