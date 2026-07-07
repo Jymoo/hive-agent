@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hive-agent.fullname" . }}
+  labels: {{- include "hive-agent.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "hive-agent.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        {{- include "hive-agent.labels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: true
+      # Allow the pod to keep running even during backend-side disconnects.
+      # terminationGracePeriodSeconds gives the agent time to flush in-flight
+      # commands and cleanly close the WebSocket before the container exits.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: {{ include "hive-agent.fullname" . }}
+      containers:
+      - name: hive-agent
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        envFrom:
+        - configMapRef: { name: {{ include "hive-agent.fullname" . }} }
+        - secretRef: { name: {{ include "hive-agent.fullname" . }} }
+        ports:
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        # ── Startup probe ──────────────────────────────────────────────────────
+        # Gives the agent up to 3 minutes to complete initial registration and
+        # establish the first WebSocket connection before liveness kicks in.
+        # Kubernetes will NOT apply livenessProbe until startupProbe succeeds.
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 36   # 36 × 5s = 3 minutes max startup window
+          successThreshold: 1
+        # ── Liveness probe ─────────────────────────────────────────────────────
+        # /healthz always returns 200 (process is alive).  We intentionally do
+        # NOT use /readyz here: the tunnel can legitimately be down during a
+        # backend restart and we must NOT kill the pod in that case — the agent
+        # reconnects automatically without a restart.
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 15
+          failureThreshold: 4    # 4 × 15s = 60s tolerance before restart
+          successThreshold: 1
+          timeoutSeconds: 5
+        # ── Readiness probe ────────────────────────────────────────────────────
+        # /readyz returns 200 only when the WebSocket tunnel is established.
+        # This gates traffic routing (e.g. Services) but does NOT restart the pod.
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 6    # 6 × 10s = 60s grace for reconnect
+          successThreshold: 1
+          timeoutSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources: {{- toYaml .Values.resources | nindent 10 }}
+      nodeSelector: {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations: {{- toYaml .Values.tolerations | nindent 8 }}
+      affinity: {{- toYaml .Values.affinity | nindent 8 }}

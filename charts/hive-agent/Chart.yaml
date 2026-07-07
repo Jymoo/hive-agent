@@ -1,0 +1,6 @@
+apiVersion: v2
+name: hive-agent
+description: Outbound-only Kubernetes investigation worker bridging Hive Control Plane and HolmesGPT.
+type: application
+version: 1.0.7
+appVersion: "1.0.7"

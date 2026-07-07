@@ -1,0 +1,22 @@
+syntax = "proto3";
+package hive.agent.v1;
+option go_package = "github.com/hive-sre/hive-agent/api/proto;agentv1";
+
+// Retained for future transport only. V1 uses secure WebSocket exclusively.
+service AgentTunnel {
+  rpc Connect(stream AgentEnvelope) returns (stream ControlPlaneEnvelope);
+}
+
+message AgentEnvelope {
+  string cluster_id = 1;
+  oneof payload { AgentStatus status = 2; ToolResult result = 3; InventoryDelta inventory_delta = 4; Heartbeat heartbeat = 5; }
+}
+message ControlPlaneEnvelope { oneof payload { ToolRequest tool_request = 1; CredentialRotation credential_rotation = 2; Revoke revoke = 3; } }
+message ToolRequest { string request_id = 1; string command = 2; map<string,string> parameters = 3; }
+message AgentStatus { string request_id = 1; string phase = 2; string message = 3; int64 unix_millis = 4; }
+message ToolResult { string request_id = 1; string command = 2; string cluster_id = 3; string status = 4; bytes json_data = 5; string error = 6; int64 duration_millis = 7; int64 unix_millis = 8; }
+message InventoryDelta { repeated InventoryEvent events = 1; }
+message InventoryEvent { string type = 1; string operation = 2; string resource_version = 3; bytes json_object = 4; int64 unix_millis = 5; }
+message Heartbeat { string cluster_health = 1; string agent_state = 2; int32 ready_nodes = 3; int32 not_ready_nodes = 4; int32 running_pods = 5; int32 pending_pods = 6; int32 failed_pods = 7; repeated string capabilities = 8; }
+message CredentialRotation { string jwt = 1; string ws_endpoint = 2; }
+message Revoke { string reason = 1; }
