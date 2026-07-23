@@ -134,11 +134,36 @@ func run(cmd *cobra.Command, _ []string) error {
 	go hb.Run(ctx, 30*time.Second)
 	go inv.Run(ctx, 5*time.Minute)
 	go tunnel.Run(ctx)
+	go proactiveTokenRefresh(ctx, registrar, proactiveRefreshInterval, log)
 	<-ctx.Done()
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = server.Shutdown(shutdown)
 	return nil
+}
+
+// proactiveRefreshInterval is a fixed, defensive credential-rotation cadence.
+// Backend agent JWTs are opaque bearer tokens with no exp claim to introspect
+// (see registration.Response), so this isn't "refresh before expiry" so much
+// as "don't rely solely on reactive re-registration after a 401" — it rotates
+// the token periodically and limits how long a leaked token stays valid.
+// Client.Reregister (triggered on 401/403 elsewhere) remains the fallback if
+// a refresh attempt itself fails.
+const proactiveRefreshInterval = 15 * time.Minute
+
+func proactiveTokenRefresh(ctx context.Context, registrar *registration.Client, interval time.Duration, log *zap.Logger) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := registrar.Refresh(ctx); err != nil {
+				log.Warn("proactive token refresh failed; relying on reactive re-registration on next 401", zap.Error(err))
+			}
+		}
+	}
 }
 
 func healthServer(cfg config.Config, tunnel *websocket.Manager, _ *telemetry.Metrics) *http.Server {

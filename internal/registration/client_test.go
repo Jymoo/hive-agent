@@ -79,6 +79,24 @@ func TestHeartbeatPayloadUsesUIStateField(t *testing.T) {
 	}
 }
 
+func TestInventoryEventJSONIncludesResyncEpoch(t *testing.T) {
+	event := InventoryEvent{ClusterID: "cluster-1", Type: "pod", Operation: "upsert", ResyncEpoch: 4}
+	data, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsJSONField(data, "resyncEpoch") {
+		t.Fatalf("expected resyncEpoch field in inventory event json: %s", string(data))
+	}
+	var decoded InventoryEvent
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.ResyncEpoch != 4 {
+		t.Fatalf("expected resyncEpoch 4 round-trip, got %d", decoded.ResyncEpoch)
+	}
+}
+
 func containsJSONField(data []byte, field string) bool {
 	var obj map[string]any
 	if err := json.Unmarshal(data, &obj); err != nil {

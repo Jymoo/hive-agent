@@ -50,6 +50,14 @@ type HeartbeatPayload struct {
 type InventoryEvent struct {
 	ClusterID string `json:"clusterId"`; Type string `json:"type"`; Operation string `json:"operation"`
 	ResourceVersion string `json:"resourceVersion"`; Object map[string]any `json:"object,omitempty"`; Timestamp time.Time `json:"timestamp"`
+	// ResyncEpoch identifies which full informer resync pass produced this
+	// event. The backend uses it to reconcile deletions that happened while
+	// the agent was fully down (which produce no watch delete event): once a
+	// boundary-operation event confirms a resync pass completed, anything for
+	// this cluster still tagged with an older epoch is stale and gets marked
+	// deleted. Only meaningful for agents advertising the "periodic_resync"
+	// capability; older agents simply omit it (zero value).
+	ResyncEpoch int64 `json:"resyncEpoch"`
 }
 type InventoryDeltaPayload struct { ClusterID string `json:"clusterId"`; Events []InventoryEvent `json:"events"` }
 type CredentialRotation struct { JWT string `json:"jwt,omitempty"`; APIKey string `json:"apiKey,omitempty"`; WSEndpoint string `json:"wsEndpoint,omitempty"` }

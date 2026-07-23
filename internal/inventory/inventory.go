@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
@@ -20,13 +21,26 @@ import (
 	"github.com/hive-sre/hive-agent/internal/telemetry"
 )
 
+// resyncBoundaryGrace is how long to wait, after bumping resyncEpoch, before
+// telling the backend the resync pass is complete. It must comfortably exceed
+// the flush cadence (2s ticks / 500-item batches, see flush()) so every event
+// the informer's own periodic resync produces gets batched and sent tagged
+// with the new epoch before the boundary marker follows it.
+const resyncBoundaryGrace = 30 * time.Second
+
+// Queue bound: sized so a fresh full-relist burst on a large cluster
+// (thousands of pods/services/etc. across 9 informers) doesn't overflow and
+// silently drop events before the 2s/500-item flush can drain it.
+const inventoryQueueSize = 200_000
+
 type Runner struct {
-	kube      *hivekube.Client
-	api       *registration.Client
-	clusterID string
-	metrics   *telemetry.Metrics
-	log       *zap.Logger
-	queue     chan registration.InventoryEvent
+	kube        *hivekube.Client
+	api         *registration.Client
+	clusterID   string
+	metrics     *telemetry.Metrics
+	log         *zap.Logger
+	queue       chan registration.InventoryEvent
+	resyncEpoch atomic.Int64
 }
 
 func New(
@@ -42,12 +56,12 @@ func New(
 		clusterID: clusterID,
 		metrics:   metrics,
 		log:       log,
-		queue:     make(chan registration.InventoryEvent, 65536),
+		queue:     make(chan registration.InventoryEvent, inventoryQueueSize),
 	}
 }
 
-func (r *Runner) Run(ctx context.Context, _ time.Duration) {
-	factory := informers.NewSharedInformerFactory(r.kube.Clientset, 0)
+func (r *Runner) Run(ctx context.Context, resyncPeriod time.Duration) {
+	factory := informers.NewSharedInformerFactory(r.kube.Clientset, resyncPeriod)
 
 	pods := factory.Core().V1().Pods().Informer()
 	nodes := factory.Core().V1().Nodes().Informer()
@@ -86,7 +100,52 @@ func (r *Runner) Run(ctx context.Context, _ time.Duration) {
 		r.log.Warn("inventory cache sync interrupted")
 	}
 
+	go r.runResyncCycle(ctx, resyncPeriod)
 	r.flush(ctx)
+}
+
+// runResyncCycle periodically bumps resyncEpoch and, once the informer's own
+// periodic resync (started with the same period) has had time to replay every
+// cached object through enqueue(), emits a boundary marker event carrying the
+// new epoch. The backend uses that marker to reconcile deletions that
+// happened while the agent was fully down — see registration.InventoryEvent.
+func (r *Runner) runResyncCycle(ctx context.Context, resyncPeriod time.Duration) {
+	if resyncPeriod <= 0 {
+		return
+	}
+	ticker := time.NewTicker(resyncPeriod)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			epoch := r.resyncEpoch.Add(1)
+			select {
+			case <-time.After(resyncBoundaryGrace):
+			case <-ctx.Done():
+				return
+			}
+			select {
+			case r.queue <- newBoundaryEvent(r.clusterID, epoch):
+			default:
+				r.metrics.InventoryFailures.Inc()
+				r.log.Warn("inventory delta queue full; dropped resync boundary marker", zap.Int64("epoch", epoch))
+			}
+		}
+	}
+}
+
+// newBoundaryEvent builds the marker event that tells the backend a full
+// informer resync pass (identified by epoch) has completed. It carries no
+// object — the backend recognizes it purely by Operation == "boundary".
+func newBoundaryEvent(clusterID string, epoch int64) registration.InventoryEvent {
+	return registration.InventoryEvent{
+		ClusterID:   clusterID,
+		Operation:   "boundary",
+		ResyncEpoch: epoch,
+		Timestamp:   time.Now().UTC(),
+	}
 }
 
 func (r *Runner) bind(
@@ -135,6 +194,7 @@ func (r *Runner) enqueue(
 		Operation:      op,
 		ResourceVersion: objMeta.GetResourceVersion(),
 		Timestamp:      time.Now().UTC(),
+		ResyncEpoch:    r.resyncEpoch.Load(),
 	}
 
 	if op != "delete" {

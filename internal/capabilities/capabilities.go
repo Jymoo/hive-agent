@@ -42,6 +42,13 @@ const (
 	GetHorizontalPodAutoscalers = "get_horizontalpodautoscalers"
 	GetPodDisruptionBudgets    = "get_poddisruptionbudgets"
 	GetLeases                  = "get_leases"
+	// PeriodicResync is not a read-verb command capability like the others —
+	// it tells the backend this agent performs a periodic full informer
+	// resync and emits resync-boundary markers on the inventory delta stream,
+	// so the backend's stale-resource reconciliation sweep is safe to run for
+	// this cluster. Older agents that never send boundary markers must never
+	// have their resources swept, hence the explicit gate.
+	PeriodicResync             = "periodic_resync"
 )
 
 func All() []string {
@@ -57,6 +64,7 @@ func All() []string {
 		GetServiceAccounts, GetRoles, GetClusterRoles, GetRoleBindings, GetClusterRoleBindings,
 		GetResourceQuotas, GetLimitRanges, GetHorizontalPodAutoscalers,
 		GetPodDisruptionBudgets, GetLeases,
+		PeriodicResync,
 	}
 }
 

@@ -17,3 +17,12 @@ func TestAllContainsRequiredHolmesGPTCapabilities(t *testing.T) {
 		}
 	}
 }
+
+func TestAllContainsPeriodicResync(t *testing.T) {
+	// The backend gates its stale-resource reconciliation sweep on this
+	// capability token — an agent that never advertises it must never have
+	// resources swept, so this must always be present in All().
+	if !Contains(PeriodicResync) {
+		t.Fatal("expected PeriodicResync capability in All()")
+	}
+}
