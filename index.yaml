@@ -1,0 +1,92 @@
+apiVersion: v1
+entries:
+  hive-agent:
+  - apiVersion: v2
+    appVersion: 1.0.7
+    created: "2026-07-02T00:15:08.3906513+03:00"
+    description: Outbound-only Kubernetes investigation worker bridging Hive Control
+      Plane and HolmesGPT.
+    digest: e9a628c8882f48dabcd2cee9f9aa0defdf8bfaf62c3534b6a434e14c98aa5cb8
+    name: hive-agent
+    type: application
+    urls:
+    - https://Jymoo.github.io/hive-agent/hive-agent-1.0.7.tgz
+    version: 1.0.7
+  - apiVersion: v2
+    appVersion: 1.0.6
+    created: "2026-07-02T00:15:08.3895878+03:00"
+    description: Outbound-only Kubernetes investigation worker bridging Hive Control
+      Plane and HolmesGPT.
+    digest: 1a372d5565661b15cd7cb98b72dd7c74ed3db4a21149694d5d8d07e45a8ad666
+    name: hive-agent
+    type: application
+    urls:
+    - https://Jymoo.github.io/hive-agent/hive-agent-1.0.6.tgz
+    version: 1.0.6
+  - apiVersion: v2
+    appVersion: 1.0.5
+    created: "2026-07-02T00:15:08.3885299+03:00"
+    description: Outbound-only Kubernetes investigation worker bridging Hive Control
+      Plane and HolmesGPT.
+    digest: ddc84f34ae01af826c4cece55086d2ce22b39c30d24b9051db5773a2c0b15538
+    name: hive-agent
+    type: application
+    urls:
+    - https://Jymoo.github.io/hive-agent/hive-agent-1.0.5.tgz
+    version: 1.0.5
+  - apiVersion: v2
+    appVersion: 1.0.4
+    created: "2026-07-02T00:15:08.3880016+03:00"
+    description: Outbound-only Kubernetes investigation worker bridging Hive Control
+      Plane and HolmesGPT.
+    digest: 88228d0eb9910870e2f78955ad16411796d4fa8e263dafbc029646d690fea9a7
+    name: hive-agent
+    type: application
+    urls:
+    - https://Jymoo.github.io/hive-agent/hive-agent-1.0.4.tgz
+    version: 1.0.4
+  - apiVersion: v2
+    appVersion: 1.0.3
+    created: "2026-07-02T00:15:08.3874585+03:00"
+    description: Outbound-only Kubernetes investigation worker bridging Hive Control
+      Plane and HolmesGPT.
+    digest: 8cf1f3b4661300b0e60fb2e236a2d48d816dc41ea98adbb976798c69e83cb802
+    name: hive-agent
+    type: application
+    urls:
+    - https://Jymoo.github.io/hive-agent/hive-agent-1.0.3.tgz
+    version: 1.0.3
+  - apiVersion: v2
+    appVersion: 1.0.2
+    created: "2026-07-02T00:15:08.3869336+03:00"
+    description: Outbound-only Kubernetes investigation worker bridging Hive Control
+      Plane and HolmesGPT.
+    digest: 1f73d0bfe5706592e8d07167045b5addd5d038c8ba96f9f0d3162e2a0cc23d7b
+    name: hive-agent
+    type: application
+    urls:
+    - https://Jymoo.github.io/hive-agent/hive-agent-1.0.2.tgz
+    version: 1.0.2
+  - apiVersion: v2
+    appVersion: 1.0.1
+    created: "2026-07-02T00:15:08.3858081+03:00"
+    description: Outbound-only Kubernetes investigation worker bridging Hive Control
+      Plane and HolmesGPT.
+    digest: 344b972de1bcf4753ae464637aa1e2daa94f422e869164d4f37defeb0ff97b2e
+    name: hive-agent
+    type: application
+    urls:
+    - https://Jymoo.github.io/hive-agent/hive-agent-1.0.1.tgz
+    version: 1.0.1
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-07-02T00:15:08.3852753+03:00"
+    description: Outbound-only Kubernetes investigation worker bridging Hive Control
+      Plane and HolmesGPT.
+    digest: c6a30ab82bbc29b36780d3738c9225ee089a1bacabac8fa30b10cd40ac77e80a
+    name: hive-agent
+    type: application
+    urls:
+    - https://Jymoo.github.io/hive-agent/hive-agent-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-07-02T00:15:08.3841851+03:00"
